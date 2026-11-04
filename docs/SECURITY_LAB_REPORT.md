@@ -83,7 +83,7 @@ Se realizaron los escaneos iniciales para inventariar la postura de seguridad gl
 **Figura 3**
 *Resultados globales del escaneo SCA en ResiReport*
 
-![Resultados SCA completos](screenshots/Pantallazo%203%20%28Resultados%20SCA%20completos%29.png)
+![Resultados SCA completos](screenshots/Pantallazo%203%20%28Resultados%20SCA%20completos.png)
 
 *Nota.* Salida del CLI detallando 61 vulnerabilidades abiertas en todo el monorepo (5 críticas, 19 altas, 36 medias y 1 baja).
 
@@ -265,26 +265,55 @@ Se configuró un flujo automatizado de integración continua que ejecuta escaneo
 
 ## **6. Respuestas Fundamentadas a las Preguntas de Cierre**
 
-1. **¿Cuál de las tres vulnerabilidades representa mayor riesgo real y por qué?**
-   El ReDoS en `residentController.js` representa el mayor riesgo operativo real, ya que afectaba directamente código propietario en un endpoint expuesto de la API, permitiendo un ataque directo de denegación de servicio a la CPU sin requerir condiciones complejas en dependencias externas.
+Estas respuestas parten de lo que observé en la práctica: los resultados de los escaneos, los reescaneos y la ejecución real del Quality Gate. Donde la herramienta no entregó un dato, por ejemplo la alcanzabilidad de las dependencias, lo digo de forma explícita y no lo doy por supuesto.
 
-2. **¿La mayor puntuación CVSS siempre debe corregirse primero?**
-   No. El CVSS mide la severidad técnica teórica. La priorización debe incorporar el contexto operativo, la alcanzabilidad real (*reachability*) del componente y la probabilidad de explotación en el entorno.
+### **6.1 ¿Cuál de las tres vulnerabilidades representa mayor riesgo real y por qué?**
 
-3. **¿Qué diferencia hay entre vulnerabilidad identificada y vulnerabilidad explotable?**
-   Una vulnerabilidad identificada es un defecto latente en el código o inventario. Es explotable únicamente cuando existen vectores de acceso expuestos, privilegios adecuados y una ruta de ejecución válida que permita desencadenar el impacto.
+Para mí, el mayor riesgo real lo tiene el **ReDoS de `residentController.js`**, aunque su puntuación (7.5 estimada) sea menor que la de las otras dos (9.1). Es la única de las tres con un flujo confirmado por Snyk Code: el dato entra por el cuerpo de la petición HTTP, llega sin sanitizar a `new RegExp()` y se ejecuta en un endpoint de la propia API. Además, es código propio, así que no depende de que un tercero publique un parche.
 
-4. **¿Qué impacto tiene sobre la tríada CID?**
-   Afecta la *Disponibilidad* (ReDoS por saturación de recursos), la *Integridad* (Contaminación de prototipos y deserialización alterando estados) y la *Confidencialidad* (División de respuestas HTTP filtrando cabeceras sensibles).
+Las vulnerabilidades de `react-router` y `axios` son críticas, pero su explotación exige otras condiciones: que la aplicación procese datos serializados controlados por un atacante, o que datos no confiables lleguen a la configuración o a las cabeceras de las peticiones. Si la ruta de registro exigiera un rol administrativo, el riesgo bajaría, ese control de acceso no lo evalué en esta práctica.
 
-5. **¿Qué control habría detectado el problema antes de producción?**
-   Un análisis estático SAST integrado en el IDE y complementado con ganchos locales (*pre-commit hooks*).
+### **6.2 ¿La mayor puntuación CVSS siempre debe corregirse primero?**
 
-6. **¿Cómo llevaría ese control al CI/CD?**
-   Mediante Quality Gates automatizados con Snyk CLI en GitHub Actions, configurando umbrales de severidad que fuercen la falla de la compilación ante hallazgos no permitidos.
+No. El CVSS describe la severidad técnica intrínseca de una vulnerabilidad, pero no dice nada sobre el entorno concreto donde vive (FIRST, 2019). Para priorizar hay que sumarle otras preguntas: si el componente es alcanzable desde el código de la aplicación, si el activo está expuesto, si existe un exploit maduro y qué tan probable es que alguien lo use.
 
-7. **¿Qué limitaciones se observaron en la automatización y qué parte requiere criterio humano?**
-   La automatización carece de contexto sobre la lógica de negocio y la alcanzabilidad real de código muerto. El criterio humano es indispensable para validar los parches propuestos, evaluar regresiones funcionales y definir excepciones justificadas.
+La Tabla 1 lo muestra bien. Dos hallazgos con CVSS 9.1 quedaron con un riesgo real medio, mientras que el ReDoS, con un puntaje menor, quedó como el más urgente. Un hallazgo alto y alcanzable puede merecer más prioridad que uno crítico en una función que la aplicación nunca invoca.
+
+### **6.3 ¿Qué diferencia hay entre vulnerabilidad identificada y vulnerabilidad explotable?**
+
+Una vulnerabilidad **identificada** es un defecto que aparece en el código o en una versión de paquete listada en una base de datos como la de Snyk. Es, por decirlo así, un riesgo latente.
+
+Una vulnerabilidad **explotable** necesita además tres cosas: una entrada que el atacante pueda controlar, una ruta de ejecución que llegue hasta el componente defectuoso y las condiciones de acceso que lo permitan. Por eso en el informe valoro el riesgo real por separado de la severidad, y dejo como "no determinada" la alcanzabilidad de las dependencias, porque Snyk CLI no la reportó.
+
+### **6.4 ¿Qué impacto tiene sobre la tríada CID?**
+
+Cada hallazgo toca la tríada de forma distinta:
+
+* **Disponibilidad:** el ReDoS es el caso más claro. Un patrón malicioso puede saturar la CPU y dejar sin servicio el registro de residentes.
+* **Integridad:** el ReDoS altera de forma lógica la comprobación de unicidad si se cuelan comodines. La deserialización en `react-router` puede alterar el estado del cliente, y la contaminación de prototipos en `axios` puede modificar silenciosamente la configuración de las peticiones.
+* **Confidencialidad:** el impacto es bajo en el ReDoS, aunque la respuesta de la comprobación funciona como oráculo para saber qué combinaciones de torre y apartamento ya existen. En `axios`, la manipulación de cabeceras podría exponer credenciales como tokens de sesión.
+
+### **6.5 ¿Qué control habría detectado el problema antes de producción?**
+
+Un análisis estático en el IDE, con Snyk Code o una regla de ESLint/Semgrep, habría marcado el ReDoS en el momento de escribirlo. El análisis de composición de software (SCA) habría señalado las dependencias vulnerables al incorporarlas al proyecto. Ambos controles corresponden a las prácticas de revisión de código y de identificación continua de vulnerabilidades del marco del NIST (Souppaya et al., 2022). Un *hook* de *pre-commit* añadiría una barrera más, local, antes de que el cambio llegue al repositorio.
+
+### **6.6 ¿Cómo llevaría ese control al CI/CD?**
+
+Con un Quality Gate como el de `security-gate.yml`. El escáner devuelve un código de salida distinto de cero cuando encuentra hallazgos por encima del umbral, el trabajo falla y, si la rama está protegida con verificaciones obligatorias, se bloquea la fusión (GitHub, s. f.).
+
+En la práctica ocurrió exactamente eso: la ejecución terminó en *Failure* con `exit code 1` por cuatro hallazgos altos residuales en `react-router-dom@7.14.2`, y Snyk recomendó actualizar a la versión `7.18.0` (Figura 12). Para llevarlo a producción haría falta, además, definir cómo gestionar las excepciones aceptadas, por ejemplo con exenciones documentadas y con fecha de caducidad.
+
+### **6.7 ¿Qué limitaciones se observaron en la automatización y qué parte requiere criterio humano?**
+
+La automatización fue muy buena para descubrir hallazgos en masa y para proponer en segundos un parche sintácticamente correcto. Pero le vi límites concretos:
+
+* No reportó la alcanzabilidad de las dependencias.
+* Necesitó instalar `node_modules` para poder escanear el frontend (Figura 6).
+* Los reescaneos con filtro de severidad ocultan los hallazgos de menor nivel, así que el estado de dependencias transitivas como `follow-redirects` o `form-data` hay que confirmarlo con un `snyk test` sin filtro.
+* El agente no puede juzgar si un parche cambia la experiencia esperada ni si una ruta está realmente protegida.
+
+Todo eso le corresponde al auditor: revisar el diff, validar la lógica de negocio, correr pruebas de regresión, poner el riesgo en contexto y decidir las excepciones. Es lo que plantea la guía de la práctica cuando dice que la IA no sustituye el criterio del auditor (Politécnico Colombiano Jaime Isaza Cadavid, 2026b).
+
 
 ## **7. Conclusiones y Trabajo Futuro**
 
