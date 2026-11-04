@@ -57,6 +57,8 @@ Como paso fundacional, se estableció una identidad autenticada ante la platafor
 **Figura 1**
 *Autenticación y validación de identidad en Snyk CLI*
 
+![Autenticación del CLI de Snyk](screenshots/Pantallazo%201%20%28Autenticaci%C3%B3n%20del%20CLI%29.png)
+
 *Nota.* Validación exitosa de la cuenta de usuario mediante el comando `snyk whoami` en la terminal de comandos.
 
 ### **2.2 Integración del Servidor MCP (Model Context Protocol) en Cursor IDE**
@@ -65,6 +67,8 @@ Para potenciar las capacidades de análisis y remediación asistida, se configur
 
 **Figura 2**
 *Estado activo del servidor MCP de Snyk en Cursor IDE*
+
+![Servidor MCP de Snyk activo en Cursor](screenshots/Pantallazo%202%20%28Servidor%20MCP%20en%20Cursor%29.png)
 
 *Nota.* Panel de administración de MCPs en Cursor mostrando el servidor conectado con indicador verde y 14 herramientas habilitadas para el proyecto.
 
@@ -79,15 +83,21 @@ Se realizaron los escaneos iniciales para inventariar la postura de seguridad gl
 **Figura 3**
 *Resultados globales del escaneo SCA en ResiReport*
 
+![Resultados SCA completos](screenshots/Pantallazo%203%20%28Resultados%20SCA%20completos%29.png)
+
 *Nota.* Salida del CLI detallando 61 vulnerabilidades abiertas en todo el monorepo (5 críticas, 19 altas, 36 medias y 1 baja).
 
 **Figura 4**
 *Filtrado de vulnerabilidades SCA por umbral de severidad Alta y Crítica*
 
+![Filtrado de severidad alta y crítica](screenshots/Pantallazo%204%20%28Filtrado%20de%20severidad%20alta%20-cr%C3%ADtica%29.png)
+
 *Nota.* Ejecución de `snyk test --severity-threshold=high` aislando los riesgos prioritarios.
 
 **Figura 5**
 *Resultados del escaneo SAST de código propietario*
+
+![Resultados SAST](screenshots/Pantallazo%205%20%28Resultados%20SAST%29.png)
 
 *Nota.* Hallazgos estáticos reportados por Snyk Code, destacando vulnerabilidades de denegación de servicio (ReDoS) en controladores de residentes y catálogos.
 
@@ -152,7 +162,13 @@ Utilizando la integración con el servidor MCP de Snyk, el agente analizó el re
 **Figura 6**
 *Interacción con Cursor Agent invocando herramientas MCP de Snyk*
 
-*Nota.* Captura de Composer mostrando el razonamiento del agente y la consulta en tiempo real al servidor MCP de Snyk.
+![(a) Prompt y uso de herramientas Snyk](screenshots/Pantallazo%206%20%28Prompt%20e%20Interacci%C3%B3n%20MCP%29/Utilizando%20herramientas%20snyk.png)
+
+![(b) Autenticación del servidor MCP](screenshots/Pantallazo%206%20%28Prompt%20e%20Interacci%C3%B3n%20MCP%29/mcp.png)
+
+![(c) Confirmación del ReDoS por Snyk](screenshots/Pantallazo%206%20%28Prompt%20e%20Interacci%C3%B3n%20MCP%29/Confirmaci%C3%B3n%20ReDoS.png)
+
+*Nota.* (a) Composer mostrando el prompt y el razonamiento del agente; (b) autenticación exitosa del servidor MCP de Snyk; (c) confirmación del ReDoS en `torre` y `apartamento` por parte de Snyk.
 
 **Código DESPUÉS (Corregido):**
 
@@ -174,6 +190,8 @@ const aptExists = await User.findOne({
 **Figura 7**
 *Inspección del Diff antes de aceptar los cambios propuestos*
 
+![Diff de código ANTES y DESPUÉS](screenshots/Pantallazo%207%20%28Diff%20de%20C%C3%B3digo%20ANTES%20-DESPU%C3%89S%29.png)
+
 *Nota.* Vista comparativa (*diff*) en Cursor IDE evidenciando la inserción de `escapeRegExp` y la sanitización de los parámetros.
 
 #### **Verificación por Re-escaneo SAST**
@@ -182,6 +200,8 @@ Tras aplicar el parche, se reejecutó el análisis estático de código.
 
 **Figura 8**
 *Re-escaneo SAST confirmando la eliminación del ReDoS en el controlador*
+
+![Re-escaneo SAST](screenshots/Pantallazo%208%20%28Re-escaneo%20SAST%29%20.png)
 
 *Nota.* Salida de terminal con la reducción de hallazgos altos de 9 a 7, extinguiendo los avisos en `residentController.js`.
 
@@ -204,6 +224,8 @@ Se actualizaron los manifiestos de dependencias del frontend (`frontend/package.
 **Figura 9**
 *Re-escaneo SCA del frontend tras aplicar la actualización de paquetes*
 
+![Re-escaneo SCA](screenshots/Pantallazo%209%20%28Re-escaneo%20SCA%29.png)
+
 *Nota.* Comprobación en terminal reportando 0 vulnerabilidades abiertas en el árbol de dependencias directas analizado del frontend.
 
 ## **5. Estrategia Preventiva y Controles Shift-Left**
@@ -217,6 +239,8 @@ Se estableció un archivo de directivas en la raíz del entorno de desarrollo pa
 **Figura 10**
 *Archivo de reglas de desarrollo seguro para el agente*
 
+![Reglas del IDE (.cursorrules)](screenshots/Pantallazo%2010%20%28Reglas%20del%20IDE%29.png)
+
 *Nota.* Definición de políticas para evitar patrones ReDoS y requerir validación estricta de entradas.
 
 ### **5.2 Quality Gate en CI/CD (GitHub Actions)**
@@ -226,13 +250,18 @@ Se configuró un flujo automatizado de integración continua que ejecuta escaneo
 **Figura 11**
 *Definición del pipeline de control en GitHub Actions*
 
+![Workflow de GitHub Actions](screenshots/Pantallazo%2011%20%28Workflow%20de%20GitHub%20Actions%29.png)
+
 *Nota.* Script YAML configurado en `.github/workflows/security-gate.yml` con el umbral `--severity-threshold=high`.
 
 **Figura 12**
 *Ejecución y bloqueo efectivo del Quality Gate en la plataforma de GitHub*
 
+![(a) Pipeline bloqueado](screenshots/Pantallazo%2012%20%28Quality%20Gate%20Ejecutado%20-%20Bloqueo%29/Bloqueo.png)
 
-*Nota.* Demostración del bloqueo del pipeline (`exit code 1`) al persistir 4 vulnerabilidades de severidad alta transitivas en `react-router-dom@7.14.2`, evidenciando el funcionamiento correcto de la política de seguridad.
+![(b) Resultado del escaneo en el pipeline](screenshots/Pantallazo%2012%20%28Quality%20Gate%20Ejecutado%20-%20Bloqueo%29/Resultado.png)
+
+*Nota.* (a) Ejecución fallida del workflow `security-gate.yml`; (b) detalle del resultado. Demostración del bloqueo del pipeline (`exit code 1`) al persistir 4 vulnerabilidades de severidad alta transitivas en `react-router-dom@7.14.2`, evidenciando el funcionamiento correcto de la política de seguridad.
 
 ## **6. Respuestas Fundamentadas a las Preguntas de Cierre**
 
