@@ -146,3 +146,6 @@ vite.config.ts.timestamp-*
 # Certificados SSL locales — el TLS lo maneja Vercel/Render en producción
 *.pem
 **/ssl/
+
+# Cursor
+.cursor/

@@ -2,6 +2,9 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { BCRYPT_ROUNDS } = require('../config/env');
 
+// Neutraliza metacaracteres antes de interpolar entrada de usuario en un RegExp.
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // GET /api/residents
 const getResidents = async (req, res, next) => {
   try {
@@ -71,12 +74,15 @@ const createResident = async (req, res, next) => {
       });
     }
 
-    //  Apartamento duplicado — busca otro residente en la misma torre y apartamento
-  const aptExists = await User.findOne({
-    rol: 'resident',
-    torre: { $regex: new RegExp(`^${torre.trim()}$`, 'i') },
-    apartamento: { $regex: new RegExp(`^${apartamento.trim()}$`, 'i') },
-  });
+    // Apartamento duplicado — busca otro residente en la misma torre y apartamento.
+    // La entrada se escapa para que solo coincida el texto literal (evita ReDoS).
+    const torreExacta = escapeRegExp(torre.trim());
+    const apartamentoExacto = escapeRegExp(apartamento.trim());
+    const aptExists = await User.findOne({
+      rol: 'resident',
+      torre: { $regex: new RegExp(`^${torreExacta}$`, 'i') },
+      apartamento: { $regex: new RegExp(`^${apartamentoExacto}$`, 'i') },
+    });
 
 
     // Si existe, se permite crear pero se envía advertencia en la respuesta
