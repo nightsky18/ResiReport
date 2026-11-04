@@ -112,18 +112,16 @@ La evaluación se ejecutó bajo la siguiente arquitectura de pruebas:
 
 ### **Tabla Comparativa de Versiones Frontend (SCA)**
 
-| Paquete | Versión Anterior | Versión Actualizada | Hallazgos Resueltos | Evaluación de Riesgo de Salto | 
-| ----- | ----- | ----- | ----- | ----- | 
-| `axios` | `^1.13.6` | `^1.15.2` | Prototype Pollution (`CVE-2026-42033`, `CVE-2026-42264`), HTTP Response Splitting (`CVE-2026-42035`) | Medio: Misma API, validación de cabeceras más estricta | 
-| `react-router-dom` | `^7.13.1` | `^7.14.2` | Deserialización no confiable en `react-router` (`CVE-2026-42211`) | Bajo: Sin cambios incompatibles | 
+| Paquete | Versión Anterior | Versión Actualizada | Hallazgos Resueltos | Estado en CI/CD |
+|---|---|---|---|---|
+| `axios` | `^1.13.6` | `^1.15.2` | Prototype Pollution (`CVE-2026-42033`), HTTP Response Splitting (`CVE-2026-42035`) | **Remediado** |
+| `react-router-dom` | `^7.13.1` | `^7.14.2` | Deserialización no confiable (`CVE-2026-42211`) | **Parcial** (4 hallazgos ALTO transitivos detectados en CI/CD) |
 
-### **Resultados de Re-Escaneos de Verificación**
-
-* **Re-escaneo SAST:** La ejecución de `snyk code test` redujo los hallazgos de severidad ALTA de 9 a 7 (extinguiendo los vectores de ReDoS en `residentController.js`).
-
-* **Re-escaneo SCA Crítico:** Un nuevo escaneo en el frontend filtrado con `--severity-threshold=critical` devolvió **0 hallazgos abiertos** en las dependencias declaradas.
-
-* **Observación Técnica sobre `npm audit`:** Aunque `npm audit` reporta una vulnerabilidad crítica transitiva en `proxy-addr` (1.1.0–2.0.7), esta queda fuera de los paquetes directos declarados como críticos por Snyk en el árbol principal de `package.json`.
+### **Resultados del Security Gate en GitHub Actions**
+* **Evaluación General:** 3 proyectos analizados en la nube (`frontend`, `backend` y raíz).
+* **Hallazgos Totales Detectados:** 7 vulnerabilidades abiertas en el repositorio (1 CRITICAL, 6 HIGH).
+* **Frontend:** 0 vulnerabilidades CRÍTICAS abiertas en dependencias directas. Sin embargo, en `react-router-dom@7.14.2` persisten 4 hallazgos de severidad **HIGH** (XSS, Open Redirect, Inefficient Algorithmic Complexity, Allocation of Resources).
+* **Acción del Security Gate:** El paso `Snyk SCA Security Gate Check` bloqueó la tubería con código de salida no cero (`exit code 1`), cumpliendo con la política establecida de `--severity-threshold=high`. Para su remediación completa se requiere actualizar a `react-router-dom@7.18.0`.
 
 ## **7. Estrategia y Controles Preventivos Shift-Left**
 
